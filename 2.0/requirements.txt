@@ -1,2 +1,0 @@
-trimesh>=4.0
-numpy

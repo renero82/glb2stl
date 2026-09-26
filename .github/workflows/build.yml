@@ -1,0 +1,84 @@
+name: Build desktop apps
+
+on:
+  push:
+    tags: ["v*"]          # a new tag like v2.1.0 builds and publishes the release
+  workflow_dispatch:      # manual run from the Actions tab (test build, no release)
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest        # Apple Silicon
+            target: macos-arm64
+          - os: windows-latest
+            target: windows-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-gui.txt pyinstaller pillow
+
+      - name: Build with PyInstaller
+        run: pyinstaller --noconfirm glb2stl.spec
+
+      - name: Selftest (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          dist/glb2stl.app/Contents/MacOS/glb2stl --selftest selftest.txt || { cat selftest.txt; exit 1; }
+          cat selftest.txt
+
+      - name: Selftest (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath "dist\glb2stl.exe" -ArgumentList "--selftest", "selftest.txt" -Wait -PassThru
+          Get-Content selftest.txt
+          if ($p.ExitCode -ne 0) { exit 1 }
+
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          ditto -c -k --keepParent dist/glb2stl.app "glb2stl-${{ github.ref_name }}-${{ matrix.target }}.zip"
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          cp dist/glb2stl.exe "glb2stl-${{ github.ref_name }}-${{ matrix.target }}.exe"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: glb2stl-${{ matrix.target }}
+          path: |
+            glb2stl-*.zip
+            glb2stl-*.exe
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: glb2stl ${{ github.ref_name }}
+          body_path: CHANGELOG.md
+          files: artifacts/*

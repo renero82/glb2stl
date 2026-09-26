@@ -1,5 +1,0 @@
-[console_scripts]
-glb2stl = glb2stl.cli:main
-
-[gui_scripts]
-glb2stl-gui = glb2stl.gui:main
