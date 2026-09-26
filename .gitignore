@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.venv/
+*.stl
+*.glb
+*.gltf
