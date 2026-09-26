@@ -1,8 +1,13 @@
 __pycache__/
 *.pyc
 .venv/
+.venv-build/
+build/
+dist/
+*.egg-info/
 *.stl
 *.glb
 *.gltf
-.DS_Store
 *.zip
+.DS_Store
+selftest.txt
