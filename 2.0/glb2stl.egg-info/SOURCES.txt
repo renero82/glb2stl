@@ -1,0 +1,13 @@
+LICENSE
+README.md
+pyproject.toml
+glb2stl/__init__.py
+glb2stl/cli.py
+glb2stl/core.py
+glb2stl/gui.py
+glb2stl.egg-info/PKG-INFO
+glb2stl.egg-info/SOURCES.txt
+glb2stl.egg-info/dependency_links.txt
+glb2stl.egg-info/entry_points.txt
+glb2stl.egg-info/requires.txt
+glb2stl.egg-info/top_level.txt
