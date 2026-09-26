@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.venv/
+.venv-build/
+build/
+dist/
+*.egg-info/
+*.stl
+*.glb
+*.gltf
+*.zip
+.DS_Store
+selftest.txt
