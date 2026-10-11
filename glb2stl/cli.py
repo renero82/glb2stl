@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 from . import __version__
-from .core import convert, parse_ratio
+from .core import AXES, convert, parse_ratio
 
 
 def _ratio(text: str) -> float:
@@ -25,18 +25,40 @@ def main(argv=None) -> int:
                    help="output file (single input) or directory (multiple inputs)")
     size = p.add_mutually_exclusive_group()
     size.add_argument("--height", type=float, metavar="MM", help="target height in mm")
+    size.add_argument("--length", type=float, metavar="MM",
+                      help="target length in mm (long side of the footprint, for vehicles)")
+    size.add_argument("--width", type=float, metavar="MM",
+                      help="target width in mm (short side of the footprint)")
     size.add_argument("--ratio", type=_ratio, metavar="1:N",
-                      help="scale ratio for figures, e.g. 1:16 or 1:35")
+                      help="scale ratio, e.g. 1:16 or 1:35, based on --real-size and --axis")
     size.add_argument("--scale", type=float, metavar="F",
                       help="plain scale factor (e.g. 1000 to go from meters to mm)")
-    p.add_argument("--real-height", type=float, default=1.75, metavar="M",
-                   help="real-world height in meters used with --ratio (default: 1.75)")
+    p.add_argument("--real-size", "--real-height", dest="real_size", type=float, metavar="M",
+                   help="real-world size in meters along --axis, used with --ratio "
+                        "(default: 1.75, a person's height; required with --axis length/width)")
+    p.add_argument("--axis", choices=AXES, default="height",
+                   help="reference dimension for --ratio: height (figures, default), "
+                        "length or width (vehicles)")
     p.add_argument("--no-rotate", action="store_true",
                    help="keep original orientation (model is already Z-up)")
     p.add_argument("--no-center", action="store_true",
                    help="do not center the model on X/Y")
     p.add_argument("-V", "--version", action="version", version=f"%(prog)s {__version__}")
     args = p.parse_args(argv)
+
+    target, axis = args.height, args.axis
+    if args.length:
+        target, axis = args.length, "length"
+    elif args.width:
+        target, axis = args.width, "width"
+    elif args.height:
+        axis = "height"
+    real_size = args.real_size
+    if args.ratio and real_size is None:
+        if axis != "height":
+            p.error(f"--axis {axis} needs --real-size, the real {axis} in meters "
+                    f"(e.g. --real-size 5.84 for a 5.84 m long tank)")
+        real_size = 1.75
 
     multi = len(args.inputs) > 1
     errors = 0
@@ -47,8 +69,8 @@ def main(argv=None) -> int:
         else:
             dst = args.output
         try:
-            res = convert(src, dst, height=args.height, ratio=args.ratio,
-                          real_height=args.real_height, scale=args.scale,
+            res = convert(src, dst, height=target, ratio=args.ratio,
+                          real_size=real_size, axis=axis, scale=args.scale,
                           rotate=not args.no_rotate, center=not args.no_center)
             print(res.summary())
             for w in res.warnings:

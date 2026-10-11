@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "glb2stl"
-version = "2.2.0"
+version = "2.3.0"
 description = "Convert GLB/glTF models to STL ready for 3D printing, with a CLI and a desktop GUI"
 readme = "README.md"
 license = { text = "MIT" }

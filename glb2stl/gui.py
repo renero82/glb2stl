@@ -7,14 +7,14 @@ from pathlib import Path
 from PySide6.QtCore import QObject, QSettings, Qt, QThread, Signal
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
-    QAbstractItemView, QApplication, QButtonGroup, QCheckBox, QDoubleSpinBox, QFileDialog,
+    QAbstractItemView, QApplication, QButtonGroup, QCheckBox, QComboBox, QDoubleSpinBox, QFileDialog,
     QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem,
     QMainWindow, QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QRadioButton,
     QVBoxLayout, QWidget,
 )
 
 from . import __version__
-from .core import convert
+from .core import AXES, convert
 
 EXTENSIONS = {".glb", ".gltf"}
 
@@ -128,7 +128,7 @@ class MainWindow(QMainWindow):
         g = QGridLayout(size_box)
         self.size_group = QButtonGroup(self)
         self.rb_keep = QRadioButton("Keep original units")
-        self.rb_height = QRadioButton("Target height")
+        self.rb_height = QRadioButton("Target size")
         self.rb_ratio = QRadioButton("Scale ratio  1 :")
         self.rb_scale = QRadioButton("Scale factor")
         for i, rb in enumerate((self.rb_keep, self.rb_height, self.rb_ratio, self.rb_scale)):
@@ -139,22 +139,35 @@ class MainWindow(QMainWindow):
         self.sp_real = self._spin(0.01, 100, 1.75, 2, " m")
         self.sp_scale = self._spin(0.0001, 100000, 1000, 4)
 
+        self.cb_axis = QComboBox()
+        for a in AXES:
+            self.cb_axis.addItem(a.capitalize(), a)
+        self.cb_axis.setToolTip("Height for figures; length or width (seen from above) for "
+                                "vehicles, ships and aircraft")
+        axis_row = QHBoxLayout()
+        axis_row.addWidget(QLabel("Measure along:"))
+        axis_row.addWidget(self.cb_axis)
+        axis_row.addStretch()
+
         g.addWidget(self.rb_keep, 0, 0, 1, 4)
         g.addWidget(self.rb_height, 1, 0)
         g.addWidget(self.sp_height, 1, 1)
         g.addWidget(self.rb_ratio, 2, 0)
         g.addWidget(self.sp_ratio, 2, 1)
-        g.addWidget(QLabel("real height"), 2, 2, alignment=Qt.AlignRight)
+        self.lbl_real = QLabel("real height")
+        g.addWidget(self.lbl_real, 2, 2, alignment=Qt.AlignRight)
         g.addWidget(self.sp_real, 2, 3)
         g.addWidget(self.rb_scale, 3, 0)
         g.addWidget(self.sp_scale, 3, 1)
         self.lbl_hint = QLabel()
         self.lbl_hint.setStyleSheet("color: gray;")
-        g.addWidget(self.lbl_hint, 4, 0, 1, 4)
+        g.addLayout(axis_row, 4, 0, 1, 4)
+        g.addWidget(self.lbl_hint, 5, 0, 1, 4)
         g.setColumnStretch(4, 1)
         self.size_group.idToggled.connect(self.update_size_widgets)
         for sp in (self.sp_ratio, self.sp_real):
             sp.valueChanged.connect(self.update_size_widgets)
+        self.cb_axis.currentIndexChanged.connect(self.update_size_widgets)
         root.addWidget(size_box)
 
         # --- options + output --------------------------------------------
@@ -255,11 +268,17 @@ class MainWindow(QMainWindow):
         self.sp_ratio.setEnabled(mode == 2)
         self.sp_real.setEnabled(mode == 2)
         self.sp_scale.setEnabled(mode == 3)
+        self.cb_axis.setEnabled(mode in (1, 2))
+        axis = self.cb_axis.currentData() or "height"
+        self.lbl_real.setText(f"real {axis}")
+        where = {"height": "total height",
+                 "length": "long side of the footprint seen from above",
+                 "width": "short side of the footprint seen from above"}[axis]
         hints = {
             0: "Sizes stay as in the file: GLB is in meters, so models usually come out tiny.",
-            1: "The model is scaled so its total height matches the value.",
-            2: f"Figure height: {self.sp_real.value() * 1000 / self.sp_ratio.value():.1f} mm "
-               f"(uses the total height of the model).",
+            1: f"The model is scaled so its {axis} matches the value ({where}).",
+            2: f"Model {axis}: {self.sp_real.value() * 1000 / self.sp_ratio.value():.1f} mm "
+               f"({where}).",
             3: "Every dimension is multiplied by this factor (1000 = meters to mm).",
         }
         self.lbl_hint.setText(hints.get(mode, ""))
@@ -274,7 +293,8 @@ class MainWindow(QMainWindow):
         return {
             "height": self.sp_height.value() if mode == 1 else None,
             "ratio": self.sp_ratio.value() if mode == 2 else None,
-            "real_height": self.sp_real.value(),
+            "real_size": self.sp_real.value(),
+            "axis": self.cb_axis.currentData() or "height",
             "scale": self.sp_scale.value() if mode == 3 else None,
             "rotate": self.cb_rotate.isChecked(),
             "center": self.cb_center.isChecked(),
@@ -346,6 +366,8 @@ class MainWindow(QMainWindow):
         self.sp_height.setValue(float(s.value("height", 110)))
         self.sp_ratio.setValue(float(s.value("ratio", 16)))
         self.sp_real.setValue(float(s.value("real_height", 1.75)))
+        i = self.cb_axis.findData(s.value("axis", "height"))
+        self.cb_axis.setCurrentIndex(max(i, 0))
         self.sp_scale.setValue(float(s.value("scale", 1000)))
         self.cb_rotate.setChecked(s.value("rotate", "true") == "true")
         self.cb_center.setChecked(s.value("center", "true") == "true")
@@ -358,6 +380,7 @@ class MainWindow(QMainWindow):
         s.setValue("height", self.sp_height.value())
         s.setValue("ratio", self.sp_ratio.value())
         s.setValue("real_height", self.sp_real.value())
+        s.setValue("axis", self.cb_axis.currentData() or "height")
         s.setValue("scale", self.sp_scale.value())
         s.setValue("rotate", "true" if self.cb_rotate.isChecked() else "false")
         s.setValue("center", "true" if self.cb_center.isChecked() else "false")
@@ -406,6 +429,16 @@ def selftest(report: str | None = None) -> int:
                 raise AssertionError(f"unexpected result, expected {expected}")
             if not (Path(tmp) / "cube.stl").stat().st_size:
                 raise AssertionError("empty STL")
+            # vehicle: 5.84 x 2.62 x 2.74 m, turned 30 degrees, scaled 1:35 by its length
+            tank = trimesh.creation.box(extents=[5.84, 2.74, 2.62])
+            tank.apply_transform(trimesh.transformations.rotation_matrix(0.5236, [0, 1, 0]))
+            tank.export(Path(tmp) / "tank.glb")
+            res = convert(Path(tmp) / "tank.glb", Path(tmp) / "tank.stl", ratio=35,
+                          real_size=5.84, axis="length")
+            z = res.size_mm[2]
+            lines.append(f"vehicle ok: height {z:.2f} mm at 1:35 by length")
+            if abs(z - 2740 / 35) > 0.01:
+                raise AssertionError(f"unexpected vehicle height {z:.2f}, expected {2740 / 35:.2f}")
         win.close()
         app.quit()
         lines.append("SELFTEST PASSED")
