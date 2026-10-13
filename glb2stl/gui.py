@@ -17,6 +17,7 @@ from . import __version__
 from .core import AXES, convert
 
 EXTENSIONS = {".glb", ".gltf"}
+COFFEE_URL = "https://buymeacoffee.com/renero82"
 
 
 class DropList(QListWidget):
@@ -211,6 +212,11 @@ class MainWindow(QMainWindow):
         self.log.setReadOnly(True)
         self.log.setMaximumBlockCount(2000)
         root.addWidget(self.log, stretch=1)
+
+        coffee = QLabel(f'<a href="{COFFEE_URL}">\u2615 Buy me a coffee</a>')
+        coffee.setAlignment(Qt.AlignRight)
+        coffee.setOpenExternalLinks(True)
+        root.addWidget(coffee)
 
         quit_action = QAction(self)
         quit_action.setShortcut(QKeySequence.Quit)
