@@ -171,6 +171,12 @@ pip install ".[gui]"
 glb2stl-gui
 ```
 
+## Code signing
+
+Free code signing for the Windows builds is planned through the [SignPath Foundation](https://signpath.org).
+It is not active yet: current releases are unsigned. See the [code signing policy](CODE_SIGNING.md)
+for status, roles and privacy policy.
+
 ## License
 
 [MIT](LICENSE)
