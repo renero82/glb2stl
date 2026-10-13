@@ -1,5 +1,7 @@
 # glb2stl
 
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-renero82-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/renero82)
+
 Convert **GLB / glTF** 3D models to **STL**, ready for 3D printing.
 Available as a **desktop app** and as a **command line tool**.
 
